@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/lognitor/go-sdk/log"
+	"github.com/lognitor/go-logger/logger"
 	"os"
 )
 
 func main() {
-	logger := log.New(os.Stdout, "test")
+	logger := logger.New(os.Stdout, "test")
 
 	logger.Info("hi there")
 	logger.Info("hi there 2")

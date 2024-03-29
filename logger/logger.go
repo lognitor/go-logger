@@ -1,10 +1,9 @@
-package log
+package logger
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/fatih/color"
 	"io"
 	"os"
 	"runtime"
@@ -15,8 +14,12 @@ import (
 
 const version = "go-sdk/v0.0.1"
 
+// A Logger represents an active logging object that generates json lines of
+// output to an [io.Writer]. Each logging operation makes a single call to
+// the Writer's Write method. A Logger can be used simultaneously from
+// multiple goroutines; it guarantees to serialize access to the Writer.
+// TODO: Support not json output
 type Logger struct {
-	token      string
 	prefix     string
 	level      uint32
 	writer     io.Writer
@@ -41,6 +44,7 @@ const (
 	fatalLevel
 )
 
+// New create new logger instance
 func New(writer io.Writer, prefix string) *Logger {
 	l := &Logger{
 		level:  uint32(INFO),
@@ -57,42 +61,42 @@ func New(writer io.Writer, prefix string) *Logger {
 }
 
 func (l *Logger) initLevels() {
-	blue := color.New(color.FgBlue).SprintFunc()
-	green := color.New(color.FgGreen).SprintFunc()
-	yellow := color.New(color.FgYellow).SprintFunc()
-	red := color.New(color.FgRed).SprintFunc()
-
-	redBg := color.New(color.BgRed).SprintFunc()
-	yellowBg := color.New(color.BgYellow).SprintFunc()
+	//blue := color.New(color.FgBlue).SprintFunc()
+	//green := color.New(color.FgGreen).SprintFunc()
+	//yellow := color.New(color.FgYellow).SprintFunc()
+	//red := color.New(color.FgRed).SprintFunc()
+	//
+	//redBg := color.New(color.BgRed).SprintFunc()
+	//yellowBg := color.New(color.BgYellow).SprintFunc()
 
 	l.levels = []string{
 		"-",
-		blue("DEBUG"),
-		green("INFO"),
-		yellow("WARN"),
-		red("ERROR"),
+		"DEBUG",
+		"INFO",
+		"WARN",
+		"ERROR",
 		"",
-		yellowBg("PANIC"),
-		redBg("FATAL"),
+		"PANIC",
+		"FATAL",
 	}
 }
 
-// Level returns the current log level.
+// Level returns the current logger level.
 func (l *Logger) Level() Lvl {
 	return Lvl(atomic.LoadUint32(&l.level))
 }
 
-// SetLevel sets the log level.
+// SetLevel sets the logger level.
 func (l *Logger) SetLevel(level Lvl) {
 	atomic.StoreUint32(&l.level, uint32(level))
 }
 
-// Prefix returns the current log prefix.
+// Prefix returns the current logger prefix.
 func (l *Logger) Prefix() string {
 	return l.prefix
 }
 
-// SetPrefix sets the log prefix.
+// SetPrefix sets the logger prefix.
 func (l *Logger) SetPrefix(p string) {
 	l.prefix = p
 }
@@ -103,7 +107,6 @@ func (l *Logger) Writer() io.Writer {
 }
 
 // SetOutput sets the output destination for the logger.
-// TODO: Add support for disable colorable.Writer
 func (l *Logger) SetOutput(w io.Writer) {
 	l.writer = w
 	//if w, ok := w.(*os.File); !ok || !isatty.IsTerminal(w.Fd()) {
@@ -191,16 +194,6 @@ func (l *Logger) log(level Lvl, format string, args ...interface{}) {
 	}
 	message := ""
 
-	out := struct {
-		Time    time.Time     `json:"time"`
-		Level   string        `json:"level"`
-		Prefix  string        `json:"prefix"`
-		Message any           `json:"message"`
-		Agent   string        `json:"agent"`
-		Trace   []Frame       `json:"trace"`
-		Source  FrameWithCode `json:"source"`
-	}{}
-
 	buf := l.bufferPool.Get().(*bytes.Buffer)
 	buf.Reset()
 	defer l.bufferPool.Put(buf)
@@ -218,26 +211,34 @@ func (l *Logger) log(level Lvl, format string, args ...interface{}) {
 		message = fmt.Sprintf(format, args...)
 	}
 
-	out.Time = time.Now()
-	out.Level = l.levels[level]
-	out.Prefix = l.prefix
-	out.Message = message
-	out.Agent = version
-	out.Trace = t
-	out.Source.Path = file
-	out.Source.Line = line
-	out.Source.Func = funcName
-	out.Source.Code = source
+	log := Log{
+		Time:    time.Now(),
+		Level:   l.levels[level],
+		Prefix:  l.prefix,
+		Message: message,
+		Agent:   version,
+		Trace:   t,
+		Source: FrameWithCode{
+			Frame: Frame{
+				Path: file,
+				Line: line,
+				Func: funcName,
+			},
+			Code: source,
+		},
+	}
 
-	b, _ := json.Marshal(out)
+	b, err := json.Marshal(log)
+	if err != nil {
+		return
+	}
 
-	buf.WriteString(fmt.Sprintf("[%s] ", l.prefix))
-	buf.WriteString(l.levels[level])
-	buf.WriteString("\t")
-	buf.WriteString(string(b))
-
+	buf.Write(b)
 	buf.WriteByte('\n')
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
-	l.writer.Write(buf.Bytes())
+
+	if _, err := l.writer.Write(buf.Bytes()); err != nil {
+		return
+	}
 }
