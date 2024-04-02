@@ -2,7 +2,9 @@ package writers
 
 import (
 	"fmt"
+	"github.com/goccy/go-json"
 	"github.com/lognitor/entrypoint/pkg/transport/grpc/entrypoint"
+	"github.com/lognitor/go-logger/logger"
 	"google.golang.org/grpc"
 	"net/http"
 	"time"
@@ -34,7 +36,9 @@ func NewLognitorWriter(config ConfigLognitorInterface) (*LognitorWriter, error) 
 	}
 
 	if config.IsGrpc() {
-		w.initGRPC(config.GrpcHost())
+		if err := w.initGRPC(config.GrpcHost()); err != nil {
+			return nil, err
+		}
 	}
 
 	go w.worker()
@@ -83,7 +87,41 @@ func (w *LognitorWriter) worker() {
 }
 
 func (w *LognitorWriter) sendRequest(b []byte) error {
-	//http.Post(w.host)
+	if w.grpc.client != nil {
+		return w.sendGRPC(b)
+	}
+
+	return w.sendHTTP(b)
+}
+
+func (w *LognitorWriter) sendHTTP(b []byte) error {
+	log := new(logger.Log)
+
+	if err := json.Unmarshal(b, log); err != nil {
+		return fmt.Errorf("failed to unmarshal log: %s", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, w.host, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %s", err)
+	}
+
+	req.Header.Set("Authorization", w.token)
+	req.Body = http.NoBody
+
+	resp, err := w.http.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send request: %s", err)
+	}
+	defer resp.Body.Close()
 
 	return nil
+}
+
+func (w *LognitorWriter) sendGRPC(b []byte) error {
+	_, err := (*w.grpc.client).WriteLogSync(nil, &entrypoint.PayloadRequest{
+		Message: string(b),
+	})
+
+	return err
 }
