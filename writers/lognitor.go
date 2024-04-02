@@ -120,7 +120,7 @@ func (w *LognitorWriter) sendHTTP(b []byte) error {
 
 func (w *LognitorWriter) sendGRPC(b []byte) error {
 	_, err := (*w.grpc.client).WriteLogSync(nil, &entrypoint.PayloadRequest{
-		Message: string(b),
+		Message: b,
 	})
 
 	return err
