@@ -1,31 +1,42 @@
 package writers
 
 import (
+	"bytes"
+	"context"
 	"fmt"
-	"github.com/goccy/go-json"
 	"github.com/lognitor/entrypoint/pkg/transport/grpc/entrypoint"
-	"github.com/lognitor/go-logger/logger"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"net/http"
 	"time"
 )
 
 // LognitorWriter is a writer that sends logs to lognitor
-type LognitorWriter struct {
-	in    chan []byte
-	host  string
-	token string
-	http  *http.Client
-	grpc  struct {
-		conn   *grpc.ClientConn
-		client *entrypoint.EntrypointClient
+type (
+	// EntrypointClient interface of Lognitor gRPC api client
+	EntrypointClient interface {
+		WriteLogSync(ctx context.Context, in *entrypoint.PayloadRequest, opts ...grpc.CallOption) (*entrypoint.PayloadReply, error)
+		WriteLogAsync(ctx context.Context, in *entrypoint.PayloadRequest, opts ...grpc.CallOption) (*entrypoint.PayloadReply, error)
 	}
-}
+
+	// LognitorWriter writer with meta information
+	LognitorWriter struct {
+		in    chan []byte
+		host  string
+		token string
+		http  *http.Client
+		grpc  struct {
+			conn    *grpc.ClientConn
+			client  EntrypointClient
+			timeout time.Duration
+		}
+	}
+)
 
 // NewLognitorWriter creates a new io.Writer
 // Attention! Creating this io.Writer launches the Worker listening channel.
 // Avoid unnecessary creation operations!
-func NewLognitorWriter(config ConfigLognitorInterface) (*LognitorWriter, error) {
+func NewLognitorWriter(ctx context.Context, config ConfigLognitorInterface) (*LognitorWriter, error) {
 	w := &LognitorWriter{
 		in:    make(chan []byte, 1000),
 		host:  config.Host(),
@@ -36,7 +47,7 @@ func NewLognitorWriter(config ConfigLognitorInterface) (*LognitorWriter, error) 
 	}
 
 	if config.IsGrpc() {
-		if err := w.initGRPC(config.GrpcHost()); err != nil {
+		if err := w.initGRPC(ctx, config.GrpcHost()); err != nil {
 			return nil, err
 		}
 	}
@@ -46,15 +57,15 @@ func NewLognitorWriter(config ConfigLognitorInterface) (*LognitorWriter, error) 
 	return w, nil
 }
 
-func (w *LognitorWriter) initGRPC(host string) error {
-	conn, err := grpc.Dial(host)
+func (w *LognitorWriter) initGRPC(ctx context.Context, host string) error {
+	conn, err := grpc.DialContext(ctx, host, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 	if err != nil {
 		return fmt.Errorf("failed to connect GRPC: %s", err)
 	}
 
 	client := entrypoint.NewEntrypointClient(conn)
 	w.grpc.conn = conn
-	w.grpc.client = &client
+	w.grpc.client = client
 
 	return nil
 }
@@ -95,19 +106,12 @@ func (w *LognitorWriter) sendRequest(b []byte) error {
 }
 
 func (w *LognitorWriter) sendHTTP(b []byte) error {
-	log := new(logger.Log)
-
-	if err := json.Unmarshal(b, log); err != nil {
-		return fmt.Errorf("failed to unmarshal log: %s", err)
-	}
-
-	req, err := http.NewRequest(http.MethodPost, w.host, nil)
+	req, err := http.NewRequest(http.MethodPost, w.host, bytes.NewBuffer(b))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %s", err)
 	}
 
 	req.Header.Set("Authorization", w.token)
-	req.Body = http.NoBody
 
 	resp, err := w.http.Do(req)
 	if err != nil {
@@ -119,7 +123,10 @@ func (w *LognitorWriter) sendHTTP(b []byte) error {
 }
 
 func (w *LognitorWriter) sendGRPC(b []byte) error {
-	_, err := (*w.grpc.client).WriteLogSync(nil, &entrypoint.PayloadRequest{
+	ctx, cancel := context.WithTimeout(context.Background(), w.grpc.timeout)
+	defer cancel()
+
+	_, err := w.grpc.client.WriteLogSync(ctx, &entrypoint.PayloadRequest{
 		Message: b,
 	})
 
