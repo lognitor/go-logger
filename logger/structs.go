@@ -6,7 +6,7 @@ type Log struct {
 	Time    time.Time     `json:"time"`
 	Level   string        `json:"level"`
 	Prefix  string        `json:"prefix"`
-	Message any           `json:"message"`
+	Message string        `json:"message"`
 	Agent   string        `json:"agent"`
 	Trace   []Frame       `json:"trace"`
 	Source  FrameWithCode `json:"source"`

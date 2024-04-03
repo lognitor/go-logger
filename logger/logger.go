@@ -238,7 +238,7 @@ func (l *Logger) log(level Lvl, format string, args ...interface{}) {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 
-	if _, err := l.writer.Write(buf.Bytes()); err != nil {
+	if _, err = l.writer.Write(buf.Bytes()); err != nil {
 		return
 	}
 }
