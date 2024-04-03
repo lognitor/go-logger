@@ -1,17 +1,37 @@
 package main
 
 import (
+	"context"
+	"github.com/lognitor/go-logger/configs"
 	"github.com/lognitor/go-logger/logger"
-	"os"
+	"github.com/lognitor/go-logger/writers"
+	"log"
+	"time"
 )
 
 func main() {
-	logger := logger.New(os.Stdout, "test")
+	cfg, err := configs.NewLognitor("local.entrypoint.lognitor.io:50051", "local.entrypoint.lognitor.io", "sometoken")
+	if err != nil {
+		log.Fatalf("failed to create lognitor config: %v", err)
+	}
+	cfg.EnableGrpc()
+	cfg.SetGrpcTimeout(time.Second * 10)
 
-	logger.Info("hi there")
-	logger.Info("hi there 2")
+	writer, err := writers.NewLognitorWriter(context.Background(), cfg)
+	if err != nil {
+		log.Fatalf("failed to create lognitor writer: %v", err)
+	}
+
+	l := logger.New(writer, "test")
+	for i := 0; i <= 5; i++ {
+		go test(l)
+	}
+
+	time.Sleep(time.Second * 10)
 }
 
-func test() {
-
+func test(l *logger.Logger) {
+	for i := 0; i < 3; i++ {
+		l.Infof("hello there %d %v", i, struct{}{})
+	}
 }

@@ -3,13 +3,16 @@ package configs
 import (
 	"fmt"
 	"net/url"
+	"time"
 )
 
 type Lognitor struct {
-	host     *url.URL
-	grpcHost *url.URL
-	token    string
-	grpc     bool
+	httpHost    *url.URL
+	httpTimeout time.Duration
+	grpcHost    *url.URL
+	grpcTimeout time.Duration
+	token       string
+	grpc        bool
 }
 
 // NewLognitor creates a new Lognitor config
@@ -25,10 +28,12 @@ func NewLognitor(grpcHost, httpHost, token string) (*Lognitor, error) {
 	}
 
 	return &Lognitor{
-		host:     u,
-		token:    token,
-		grpcHost: grpcUrl,
-		grpc:     false,
+		httpHost:    u,
+		httpTimeout: time.Second * 3,
+		token:       token,
+		grpcHost:    grpcUrl,
+		grpcTimeout: time.Second * 3,
+		grpc:        false,
 	}, nil
 }
 
@@ -38,9 +43,24 @@ func (l *Lognitor) EnableGrpc() {
 	l.grpc = true
 }
 
-// Host returns the host of the lognitor
-func (l *Lognitor) Host() string {
-	return l.host.String()
+// SetHttpTimeout sets timeout for the HTTP requests
+func (l *Lognitor) SetHttpTimeout(timeout time.Duration) {
+	l.httpTimeout = timeout
+}
+
+// SetGrpcTimeout sets timeout for the gRPC requests
+func (l *Lognitor) SetGrpcTimeout(timeout time.Duration) {
+	l.grpcTimeout = timeout
+}
+
+// HttpHost returns the host of the lognitor
+func (l *Lognitor) HttpHost() string {
+	return l.httpHost.String()
+}
+
+// HttpTimeout returns the http requests timeout
+func (l *Lognitor) HttpTimeout() time.Duration {
+	return l.httpTimeout
 }
 
 // Token returns the token of the lognitor
@@ -56,4 +76,9 @@ func (l *Lognitor) IsGrpc() bool {
 // GrpcHost returns the grpc host of the lognitor
 func (l *Lognitor) GrpcHost() string {
 	return l.grpcHost.String()
+}
+
+// GrpcTimeout returns the grpc requests timeout
+func (l *Lognitor) GrpcTimeout() time.Duration {
+	return l.grpcTimeout
 }

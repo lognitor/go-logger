@@ -25,7 +25,6 @@ type Logger struct {
 	writer     io.Writer
 	levels     []string
 	bufferPool sync.Pool
-	mutex      sync.Mutex
 	source     bool
 }
 
@@ -195,8 +194,10 @@ func (l *Logger) log(level Lvl, format string, args ...interface{}) {
 	message := ""
 
 	buf := l.bufferPool.Get().(*bytes.Buffer)
-	buf.Reset()
-	defer l.bufferPool.Put(buf)
+	defer func() {
+		buf.Reset()
+		l.bufferPool.Put(buf)
+	}()
 
 	pc, file, line, _ := runtime.Caller(2)
 	funcName := runtime.FuncForPC(pc).Name()
@@ -228,17 +229,16 @@ func (l *Logger) log(level Lvl, format string, args ...interface{}) {
 		},
 	}
 
-	b, err := json.Marshal(log)
-	if err != nil {
+	if err := json.NewEncoder(buf).Encode(log); err != nil {
 		return
 	}
 
-	buf.Write(b)
 	buf.WriteByte('\n')
-	l.mutex.Lock()
-	defer l.mutex.Unlock()
 
-	if _, err := l.writer.Write(buf.Bytes()); err != nil {
+	data := make([]byte, buf.Len())
+	copy(data, buf.Bytes())
+
+	if _, err := l.writer.Write(data); err != nil {
 		return
 	}
 }
