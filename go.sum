@@ -10,6 +10,10 @@ github.com/lognitor/entrypoint v1.0.3 h1:C6Ybt5W84IKgiVJZ7NIFIPrLIXepdwBtyDxsskz
 github.com/lognitor/entrypoint v1.0.3/go.mod h1:numURLSUQPtAugaeEnST5OnQPU16ZXxxKdMqkEpFfAA=
 github.com/lognitor/entrypoint v1.0.4-0.20240402172255-672bf0e40af0 h1:nQPwqUes2TuT8HXo8RFmf9UXAoBgzSnPKeU+9wn85Uw=
 github.com/lognitor/entrypoint v1.0.4-0.20240402172255-672bf0e40af0/go.mod h1:numURLSUQPtAugaeEnST5OnQPU16ZXxxKdMqkEpFfAA=
+github.com/lognitor/entrypoint v1.0.4-0.20240403001325-7e81732e818e h1:fV8dKG/aOsGz3IEzhVuLaBSwzzNPGOY1M0VUfs+kMVw=
+github.com/lognitor/entrypoint v1.0.4-0.20240403001325-7e81732e818e/go.mod h1:numURLSUQPtAugaeEnST5OnQPU16ZXxxKdMqkEpFfAA=
+github.com/lognitor/entrypoint v1.0.4-0.20240403003149-7c00b3534443 h1:01EYnN7L0AOzsy0Ma3Qgd2bskOoVbNs+tmDUvnWT5fI=
+github.com/lognitor/entrypoint v1.0.4-0.20240403003149-7c00b3534443/go.mod h1:numURLSUQPtAugaeEnST5OnQPU16ZXxxKdMqkEpFfAA=
 github.com/mattn/go-colorable v0.1.13 h1:fFA4WZxdEF4tXPZVKMLwD8oUnCTTo08duU7wxecdEvA=
 github.com/mattn/go-colorable v0.1.13/go.mod h1:7S9/ev0klgBDR4GtXTXX8a3vIGJpMovkB8vQcUbaXHg=
 github.com/mattn/go-isatty v0.0.16/go.mod h1:kYGgaQfpe5nmfYZH+SKPsOc2e4SrIfOl2e/yFXSvRLM=

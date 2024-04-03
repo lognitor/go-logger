@@ -14,6 +14,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create lognitor config: %v", err)
 	}
+	cfg.EnableGrpc()
+	cfg.SetGrpcTimeout(time.Second * 10)
 
 	writer, err := writers.NewLognitorWriter(context.Background(), cfg)
 	if err != nil {

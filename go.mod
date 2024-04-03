@@ -5,7 +5,7 @@ go 1.22.0
 toolchain go1.22.1
 
 require (
-	github.com/lognitor/entrypoint v1.0.4-0.20240402172255-672bf0e40af0
+	github.com/lognitor/entrypoint v1.0.4-0.20240403003149-7c00b3534443
 	github.com/mattn/go-colorable v0.1.13
 	google.golang.org/grpc v1.62.1
 )
