@@ -23,13 +23,15 @@ func main() {
 	}
 
 	l := logger.New(writer, "test")
-	test(l)
-}
-
-func test(l *logger.Logger) {
-	for i := 0; i < 10; i++ {
-		l.Infof("hello there %d", i)
+	for i := 0; i <= 5; i++ {
+		go test(l)
 	}
 
 	time.Sleep(time.Second * 10)
+}
+
+func test(l *logger.Logger) {
+	for i := 0; i < 3; i++ {
+		l.Infof("hello there %d", i)
+	}
 }
