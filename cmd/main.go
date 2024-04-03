@@ -32,6 +32,6 @@ func main() {
 
 func test(l *logger.Logger) {
 	for i := 0; i < 3; i++ {
-		l.Infof("hello there %d", i)
+		l.Infof("hello there %d %v", i, struct{}{})
 	}
 }
