@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	cfg, err := configs.NewLognitor("localhost:50051", "localhost:8080", "sometoken")
+	cfg, err := configs.NewLognitor("local.entrypoint.lognitor.io:50051", "local.entrypoint.lognitor.io", "sometoken")
 	if err != nil {
 		log.Fatalf("failed to create lognitor config: %v", err)
 	}
