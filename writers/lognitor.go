@@ -117,7 +117,7 @@ func (w *LognitorWriter) sendRequest(b []byte) error {
 }
 
 func (w *LognitorWriter) sendHTTP(b []byte) error {
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://%s", w.http.host), bytes.NewBuffer(b))
+	req, err := http.NewRequest(http.MethodPost, w.http.host, bytes.NewBuffer(b))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %s", err)
 	}
