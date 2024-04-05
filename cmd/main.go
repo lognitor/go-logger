@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"github.com/lognitor/go-logger/configs"
 	"github.com/lognitor/go-logger/logger"
 	"github.com/lognitor/go-logger/writers"
@@ -17,7 +16,7 @@ func main() {
 	cfg.EnableGrpc()
 	cfg.SetGrpcTimeout(time.Second * 10)
 
-	writer, err := writers.NewLognitorWriter(context.Background(), cfg)
+	writer, err := writers.NewLognitorWriter(cfg)
 	if err != nil {
 		log.Fatalf("failed to create lognitor writer: %v", err)
 	}
