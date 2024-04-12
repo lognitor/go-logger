@@ -42,7 +42,7 @@ type (
 // NewLognitorWriter creates a new io.Writer
 // Attention! Creating this io.Writer launches the Worker listening channel.
 // Avoid unnecessary creation operations!
-func NewLognitorWriter(config ConfigLognitorInterface) (*LognitorWriter, error) {
+func NewLognitorWriter(ctx context.Context, config ConfigLognitorInterface) (*LognitorWriter, error) {
 	w := &LognitorWriter{
 		in:    make(chan []byte, 1000),
 		token: config.Token(),
@@ -56,7 +56,7 @@ func NewLognitorWriter(config ConfigLognitorInterface) (*LognitorWriter, error) 
 	}
 
 	if config.IsGrpc() {
-		if err := w.initGRPC(config.GrpcHost(), config.GrpcTimeout()); err != nil {
+		if err := w.initGRPC(ctx, config.GrpcHost(), config.GrpcTimeout()); err != nil {
 			return nil, err
 		}
 	}
@@ -66,8 +66,13 @@ func NewLognitorWriter(config ConfigLognitorInterface) (*LognitorWriter, error) 
 	return w, nil
 }
 
-func (w *LognitorWriter) initGRPC(host string, timeout time.Duration) error {
-	conn, err := grpc.NewClient(host, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func (w *LognitorWriter) initGRPC(ctx context.Context, host string, timeout time.Duration) error {
+	conn, err := grpc.DialContext(
+		ctx,
+		host,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to connect GRPC: %s", err)
 	}
