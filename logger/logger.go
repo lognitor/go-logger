@@ -22,7 +22,7 @@ const version = "go-sdk/v0.0.1"
 type Logger struct {
 	prefix     string
 	level      uint32
-	writer     io.Writer
+	writer     io.WriteCloser
 	levels     []string
 	bufferPool sync.Pool
 	source     bool
@@ -44,7 +44,7 @@ const (
 )
 
 // New create new logger instance
-func New(writer io.Writer, prefix string) *Logger {
+func New(writer io.WriteCloser, prefix string) *Logger {
 	l := &Logger{
 		level:  uint32(INFO),
 		prefix: prefix,
@@ -57,6 +57,10 @@ func New(writer io.Writer, prefix string) *Logger {
 	}
 	l.initLevels()
 	return l
+}
+
+func (l *Logger) Close() error {
+	return l.writer.Close()
 }
 
 func (l *Logger) initLevels() {
@@ -106,7 +110,7 @@ func (l *Logger) Writer() io.Writer {
 }
 
 // SetOutput sets the output destination for the logger.
-func (l *Logger) SetOutput(w io.Writer) {
+func (l *Logger) SetOutput(w io.WriteCloser) {
 	l.writer = w
 	//if w, ok := w.(*os.File); !ok || !isatty.IsTerminal(w.Fd()) {
 	//	l.DisableColor()

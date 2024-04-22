@@ -26,11 +26,17 @@ func main() {
 	}
 
 	l := logger.New(writer, "test")
+	defer func() {
+		if err = l.Close(); err != nil {
+			log.Fatalf("failed to close logger: %s", err)
+		}
+	}()
+
 	for i := 0; i <= 5; i++ {
 		go test(l)
 	}
 
-	time.Sleep(time.Second * 10)
+	<-ctx.Done()
 }
 
 func test(l *logger.Logger) {
