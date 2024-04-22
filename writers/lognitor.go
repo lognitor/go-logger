@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -23,7 +24,15 @@ type (
 
 	// LognitorWriter writer with meta information
 	LognitorWriter struct {
-		in    chan []byte
+		// ctx instance of context for writer
+		ctx context.Context
+		// cancel is the cancel function for ctx
+		cancel context.CancelCauseFunc
+		// wait group for added logs
+		wg sync.WaitGroup
+		// in is input from the logger
+		in chan []byte
+		// token is the user token
 		token string
 		// http represents meta information for http requests
 		http struct {
@@ -54,6 +63,8 @@ func NewLognitorWriter(ctx context.Context, config ConfigLognitorInterface) (*Lo
 			client: &http.Client{Timeout: config.HttpTimeout()},
 		},
 	}
+
+	w.ctx, w.cancel = context.WithCancelCause(context.Background())
 
 	if config.IsGrpc() {
 		if err := w.initGRPC(ctx, config.GrpcHost(), config.GrpcTimeout()); err != nil {
@@ -87,20 +98,43 @@ func (w *LognitorWriter) initGRPC(ctx context.Context, host string, timeout time
 
 // Write writes log to the channel
 func (w *LognitorWriter) Write(p []byte) (n int, err error) {
+	// checking on the canceled context or any other errors
+	if err = context.Cause(w.ctx); err != nil {
+		return
+	}
+
+	w.wg.Add(1)
 	go w.writeToChannel(p)
 
 	return len(p), nil
 }
 
 // Close closes the channel and connection for destroying the worker
-func (w *LognitorWriter) Close() {
-	close(w.in)
-	if w.grpc.conn != nil {
-		w.grpc.conn.Close()
+// also wait until current logs in channel will be done
+func (w *LognitorWriter) Close() error {
+	// checking on the canceled context or any other errors
+	if err := context.Cause(w.ctx); err != nil {
+		return err
 	}
+
+	w.wg.Wait()
+	//close channel for incoming logs
+	close(w.in)
+	//wait until remaining logs will be done
+	<-w.ctx.Done()
+
+	if w.grpc.conn != nil {
+		if err := w.grpc.conn.Close(); err != nil {
+			return fmt.Errorf("failed to close gRPC connection: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (w *LognitorWriter) writeToChannel(b []byte) {
+	defer w.wg.Done()
+
 	w.in <- b
 }
 
@@ -110,10 +144,11 @@ func (w *LognitorWriter) worker() {
 			continue
 		}
 	}
+
+	w.cancel(ErrWriterIsClosed)
 }
 
 func (w *LognitorWriter) sendRequest(b []byte) error {
-	//TODO: has gRPC priority higher than HTTP?
 	if w.grpc.client != nil {
 		return w.sendGRPC(b)
 	}
