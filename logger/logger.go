@@ -119,7 +119,7 @@ func (l *Logger) SetOutput(w io.WriteCloser) {
 
 // Print calls l.Output to print to the logger.
 func (l *Logger) Print(i ...any) {
-	l.log(0, i)
+	l.log(0, i...)
 }
 
 // Printf calls l.Output to print to the logger with a format.
@@ -129,7 +129,7 @@ func (l *Logger) Printf(format string, args ...any) {
 
 // Debug calls l.Output to print to the logger.
 func (l *Logger) Debug(i ...any) {
-	l.log(DEBUG, i)
+	l.log(DEBUG, i...)
 }
 
 // Debugf calls l.Output to print to the logger with a format.
@@ -139,7 +139,7 @@ func (l *Logger) Debugf(format string, args ...any) {
 
 // Info calls l.Output to print to the logger info level.
 func (l *Logger) Info(i ...any) {
-	l.log(INFO, i)
+	l.log(INFO, i...)
 }
 
 // Infof calls l.Output to print to the logger info level with a format.
@@ -149,7 +149,7 @@ func (l *Logger) Infof(format string, args ...any) {
 
 // Warn calls l.Output to print to the logger warn level.
 func (l *Logger) Warn(i ...any) {
-	l.log(WARN, i)
+	l.log(WARN, i...)
 }
 
 // Warnf calls l.Output to print to the logger warn level with a format.
@@ -159,7 +159,7 @@ func (l *Logger) Warnf(format string, args ...any) {
 
 // Error calls l.Output to print to the logger error level.
 func (l *Logger) Error(i ...any) {
-	l.log(ERROR, i)
+	l.log(ERROR, i...)
 }
 
 // Errorf calls l.Output to print to the logger error level with a format.
@@ -169,7 +169,7 @@ func (l *Logger) Errorf(format string, args ...any) {
 
 // Fatal calls l.Output to print to the logger fatal level.
 func (l *Logger) Fatal(i ...any) {
-	l.log(fatalLevel, i)
+	l.log(fatalLevel, i...)
 	os.Exit(1)
 }
 
@@ -181,7 +181,7 @@ func (l *Logger) Fatalf(format string, args ...any) {
 
 // Panic calls l.Output to print to the logger panic level and then panic.
 func (l *Logger) Panic(i ...any) {
-	l.log(panicLevel, i)
+	l.log(panicLevel, i...)
 	panic(fmt.Sprint(i...))
 }
 
@@ -191,13 +191,28 @@ func (l *Logger) Panicf(format string, args ...any) {
 	panic(fmt.Sprintf(format, args...))
 }
 
-func (l *Logger) log(level Lvl, d any) {
-	//encode incoming message to json
-	message, err := json.Marshal(d)
-	if err != nil {
-		return
+func (l *Logger) log(level Lvl, d ...any) {
+	var (
+		msg []byte
+		err error
+	)
+
+	if len(d) == 1 {
+		for _, v := range d {
+			if msg, err = json.Marshal(v); err != nil {
+				return
+			}
+		}
 	}
-	l.logf(level, string(message))
+
+	if len(d) > 1 {
+		msg, err = json.Marshal(d)
+		if err != nil {
+			return
+		}
+	}
+
+	l.logf(level, string(msg))
 }
 
 func (l *Logger) logf(level Lvl, format string, args ...any) {
