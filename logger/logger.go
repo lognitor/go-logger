@@ -51,7 +51,7 @@ func New(writer io.WriteCloser, prefix string) *Logger {
 		writer: writer,
 		bufferPool: sync.Pool{
 			New: func() interface{} {
-				return bytes.NewBuffer(make([]byte, 2048))
+				return bytes.NewBuffer(make([]byte, 0, 2048))
 			},
 		},
 	}
