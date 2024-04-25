@@ -51,7 +51,7 @@ func New(writer io.WriteCloser, prefix string) *Logger {
 		writer: writer,
 		bufferPool: sync.Pool{
 			New: func() interface{} {
-				return bytes.NewBuffer(make([]byte, 2048))
+				return bytes.NewBuffer(make([]byte, 0, 2048))
 			},
 		},
 	}
@@ -118,80 +118,104 @@ func (l *Logger) SetOutput(w io.WriteCloser) {
 }
 
 // Print calls l.Output to print to the logger.
-func (l *Logger) Print(i ...interface{}) {
-	l.log(0, "", i...)
+func (l *Logger) Print(i ...any) {
+	l.log(0, i...)
 }
 
 // Printf calls l.Output to print to the logger with a format.
-func (l *Logger) Printf(format string, args ...interface{}) {
-	l.log(0, format, args...)
+func (l *Logger) Printf(format string, args ...any) {
+	l.logf(0, format, args...)
 }
 
 // Debug calls l.Output to print to the logger.
-func (l *Logger) Debug(i ...interface{}) {
-	l.log(DEBUG, "", i...)
+func (l *Logger) Debug(i ...any) {
+	l.log(DEBUG, i...)
 }
 
 // Debugf calls l.Output to print to the logger with a format.
-func (l *Logger) Debugf(format string, args ...interface{}) {
-	l.log(DEBUG, format, args...)
+func (l *Logger) Debugf(format string, args ...any) {
+	l.logf(DEBUG, format, args...)
 }
 
 // Info calls l.Output to print to the logger info level.
-func (l *Logger) Info(i ...interface{}) {
-	l.log(INFO, "", i...)
+func (l *Logger) Info(i ...any) {
+	l.log(INFO, i...)
 }
 
 // Infof calls l.Output to print to the logger info level with a format.
-func (l *Logger) Infof(format string, args ...interface{}) {
-	l.log(INFO, format, args...)
+func (l *Logger) Infof(format string, args ...any) {
+	l.logf(INFO, format, args...)
 }
 
 // Warn calls l.Output to print to the logger warn level.
-func (l *Logger) Warn(i ...interface{}) {
-	l.log(WARN, "", i...)
+func (l *Logger) Warn(i ...any) {
+	l.log(WARN, i...)
 }
 
 // Warnf calls l.Output to print to the logger warn level with a format.
-func (l *Logger) Warnf(format string, args ...interface{}) {
-	l.log(WARN, format, args...)
+func (l *Logger) Warnf(format string, args ...any) {
+	l.logf(WARN, format, args...)
 }
 
 // Error calls l.Output to print to the logger error level.
-func (l *Logger) Error(i ...interface{}) {
-	l.log(ERROR, "", i...)
+func (l *Logger) Error(i ...any) {
+	l.log(ERROR, i...)
 }
 
 // Errorf calls l.Output to print to the logger error level with a format.
-func (l *Logger) Errorf(format string, args ...interface{}) {
-	l.log(ERROR, format, args...)
+func (l *Logger) Errorf(format string, args ...any) {
+	l.logf(ERROR, format, args...)
 }
 
 // Fatal calls l.Output to print to the logger fatal level.
-func (l *Logger) Fatal(i ...interface{}) {
-	l.log(fatalLevel, "", i...)
+func (l *Logger) Fatal(i ...any) {
+	l.log(fatalLevel, i...)
 	os.Exit(1)
 }
 
 // Fatalf calls l.Output to print to the logger fatal level with a format.
-func (l *Logger) Fatalf(format string, args ...interface{}) {
-	l.log(fatalLevel, format, args...)
+func (l *Logger) Fatalf(format string, args ...any) {
+	l.logf(fatalLevel, format, args...)
 	os.Exit(1)
 }
 
 // Panic calls l.Output to print to the logger panic level and then panic.
-func (l *Logger) Panic(i ...interface{}) {
-	l.log(panicLevel, "", i...)
+func (l *Logger) Panic(i ...any) {
+	l.log(panicLevel, i...)
 	panic(fmt.Sprint(i...))
 }
 
 // Panicf calls l.Output to print to the logger panic level with a format and then panic.
-func (l *Logger) Panicf(format string, args ...interface{}) {
-	l.log(panicLevel, format, args...)
+func (l *Logger) Panicf(format string, args ...any) {
+	l.logf(panicLevel, format, args...)
 	panic(fmt.Sprintf(format, args...))
 }
 
-func (l *Logger) log(level Lvl, format string, args ...interface{}) {
+func (l *Logger) log(level Lvl, d ...any) {
+	var (
+		msg []byte
+		err error
+	)
+
+	if len(d) == 1 {
+		for _, v := range d {
+			if msg, err = json.Marshal(v); err != nil {
+				return
+			}
+		}
+	}
+
+	if len(d) > 1 {
+		msg, err = json.Marshal(d)
+		if err != nil {
+			return
+		}
+	}
+
+	l.logf(level, string(msg))
+}
+
+func (l *Logger) logf(level Lvl, format string, args ...any) {
 	if level < l.Level() {
 		return
 	}

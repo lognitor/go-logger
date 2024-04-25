@@ -2,12 +2,21 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/lognitor/go-logger/configs"
 	"github.com/lognitor/go-logger/logger"
 	"github.com/lognitor/go-logger/writers"
+	"io"
 	"log"
+	"os"
 	"time"
 )
+
+type user struct {
+	Id   string `json:"id"`
+	Body string `json:"body"`
+	File []byte `json:"file"`
+}
 
 func main() {
 	cfg, err := configs.NewLognitor("local.entrypoint.lognitor.io:4443", "https://local.entrypoint.lognitor.io", "sometoken")
@@ -41,6 +50,22 @@ func main() {
 
 func test(l *logger.Logger) {
 	for i := 0; i < 3; i++ {
-		l.Infof("hello there %d %v", i, struct{}{})
+		f, err := os.Open("cmd/examples/base/1.txt")
+		if err != nil {
+			log.Fatalf("failed to open file: %s", err)
+		}
+
+		data, err := io.ReadAll(f)
+		if err != nil {
+			log.Fatalf("failed to read file")
+		}
+
+		u := user{
+			Id:   fmt.Sprintf("%d", i),
+			Body: fmt.Sprintf("body %d", i),
+			File: data,
+		}
+
+		l.Info(u)
 	}
 }

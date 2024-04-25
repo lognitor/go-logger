@@ -205,7 +205,9 @@ func (w *LognitorWriter) sendGRPC(b []byte) error {
 		})
 	}
 
-	_, err := w.grpc.client.WriteLogSync(ctx, req)
+	if _, err := w.grpc.client.WriteLogSync(ctx, req); err != nil {
+		return err
+	}
 
-	return err
+	return nil
 }
