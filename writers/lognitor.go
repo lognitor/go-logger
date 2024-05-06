@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/lognitor/entrypoint/pkg/transport/grpc/entrypoint"
 	"github.com/lognitor/go-logger/logger"
@@ -178,7 +177,6 @@ func (w *LognitorWriter) worker() {
 
 func (w *LognitorWriter) retryWorker() {
 	for r := range w.retry.in {
-		fmt.Println("retry handled !!!!")
 		w.retry.wg.Add(1)
 		go w.sendWithRetry(r)
 	}
@@ -225,10 +223,6 @@ func (w *LognitorWriter) sendHTTP(b []byte) error {
 }
 
 func (w *LognitorWriter) sendGRPC(b []byte) error {
-	if time.Now().UnixMilli()%3 == 0 {
-		return errors.New("err")
-	}
-
 	log := new(logger.Log)
 
 	if err := json.Unmarshal(b, log); err != nil {
