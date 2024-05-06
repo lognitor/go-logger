@@ -25,6 +25,8 @@ func main() {
 	}
 	cfg.EnableGrpc()
 	cfg.SetGrpcTimeout(time.Second * 10)
+	cfg.SetRetryCount(2)
+	cfg.SetRetryDelay(time.Millisecond * 300)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()

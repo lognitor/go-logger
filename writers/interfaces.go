@@ -6,6 +6,7 @@ type (
 	ConfigLognitorInterface interface {
 		ConfigHttp
 		ConfigGrpc
+		ConfigRetry
 		Token() string
 	}
 
@@ -18,5 +19,10 @@ type (
 		GrpcHost() string
 		GrpcTimeout() time.Duration
 		IsGrpc() bool
+	}
+
+	ConfigRetry interface {
+		RetryCount() int
+		RetryDelay() time.Duration
 	}
 )
