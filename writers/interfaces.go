@@ -22,6 +22,7 @@ type (
 	}
 
 	ConfigRetry interface {
+		NoCount() bool
 		RetryCount() int
 		RetryDelay() time.Duration
 	}

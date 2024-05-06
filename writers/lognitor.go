@@ -43,12 +43,13 @@ type (
 	}
 
 	retry struct {
-		ctx    context.Context
-		cancel context.CancelCauseFunc
-		wg     sync.WaitGroup
-		in     chan []byte
-		count  int
-		delay  time.Duration
+		ctx     context.Context
+		cancel  context.CancelCauseFunc
+		wg      sync.WaitGroup
+		in      chan []byte
+		noCount bool
+		count   int
+		delay   time.Duration
 	}
 
 	httpInfo struct {
@@ -71,9 +72,10 @@ func NewLognitorWriter(ctx context.Context, config ConfigLognitorInterface) (*Lo
 		in:    make(chan []byte, 1000),
 		token: config.Token(),
 		retry: retry{
-			in:    make(chan []byte, 100),
-			count: config.RetryCount(),
-			delay: config.RetryDelay(),
+			in:      make(chan []byte, 100),
+			noCount: config.NoCount(),
+			count:   config.RetryCount(),
+			delay:   config.RetryDelay(),
 		},
 	}
 
@@ -195,13 +197,22 @@ func (w *LognitorWriter) sendRequest(b []byte) error {
 func (w *LognitorWriter) sendWithRetry(b []byte) {
 	defer w.retry.wg.Done()
 
-	for try := 0; try < w.retry.count; try++ {
-		if err := w.sendRequest(b); err != nil {
-			<-time.After(w.retry.delay)
-			continue
-		}
+	if w.retry.noCount {
+		err := w.sendRequest(b)
 
-		return
+		for err != nil {
+			err = w.sendRequest(b)
+			<-time.After(w.retry.delay)
+		}
+	} else {
+		for try := 0; try < w.retry.count; try++ {
+			if err := w.sendRequest(b); err != nil {
+				<-time.After(w.retry.delay)
+				continue
+			}
+
+			return
+		}
 	}
 }
 

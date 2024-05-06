@@ -26,8 +26,9 @@ type (
 	}
 
 	Retry struct {
-		count int
-		delay time.Duration
+		noCount bool
+		count   int
+		delay   time.Duration
 	}
 )
 
@@ -76,6 +77,11 @@ func (l *Lognitor) SetGrpcTimeout(timeout time.Duration) {
 	l.Grpc.timeout = timeout
 }
 
+// EnableNoCount set flag for retry while error will be nil
+func (l *Lognitor) EnableNoCount() {
+	l.Retry.noCount = true
+}
+
 // SetRetryCount sets count of retries for each failed log
 func (l *Lognitor) SetRetryCount(count int) {
 	l.Retry.count = count
@@ -114,6 +120,11 @@ func (l *Lognitor) GrpcHost() string {
 // GrpcTimeout returns the grpc requests timeout
 func (l *Lognitor) GrpcTimeout() time.Duration {
 	return l.Grpc.timeout
+}
+
+// NoCount returns value of flag that mean retry while error will be nil
+func (l *Lognitor) NoCount() bool {
+	return l.Retry.noCount
 }
 
 // RetryCount returns retry count for each failed log
