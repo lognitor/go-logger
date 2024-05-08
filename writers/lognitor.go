@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/lognitor/entrypoint/pkg/transport/grpc/entrypoint"
 	"github.com/lognitor/go-logger/logger"
@@ -43,13 +44,11 @@ type (
 	}
 
 	retry struct {
-		ctx     context.Context
-		cancel  context.CancelCauseFunc
-		wg      sync.WaitGroup
-		in      chan []byte
-		noCount bool
-		count   int
-		delay   time.Duration
+		ctx    context.Context
+		cancel context.CancelCauseFunc
+		wg     sync.WaitGroup
+		in     chan []byte
+		delay  time.Duration
 	}
 
 	httpInfo struct {
@@ -72,10 +71,8 @@ func NewLognitorWriter(ctx context.Context, config ConfigLognitorInterface) (*Lo
 		in:    make(chan []byte, 1000),
 		token: config.Token(),
 		retry: retry{
-			in:      make(chan []byte, 100),
-			noCount: config.NoCount(),
-			count:   config.RetryCount(),
-			delay:   config.RetryDelay(),
+			in:    make(chan []byte, 100),
+			delay: config.RetryDelay(),
 		},
 	}
 
@@ -197,21 +194,11 @@ func (w *LognitorWriter) sendRequest(b []byte) error {
 func (w *LognitorWriter) sendWithRetry(b []byte) {
 	defer w.retry.wg.Done()
 
-	if w.retry.noCount {
-		err := w.sendRequest(b)
-
+	if err := w.sendRequest(b); err != nil {
 		for err != nil {
-			err = w.sendRequest(b)
-			<-time.After(w.retry.delay)
-		}
-	} else {
-		for try := 0; try < w.retry.count; try++ {
-			if err := w.sendRequest(b); err != nil {
+			if err = w.sendRequest(b); err != nil {
 				<-time.After(w.retry.delay)
-				continue
 			}
-
-			return
 		}
 	}
 }
@@ -234,6 +221,10 @@ func (w *LognitorWriter) sendHTTP(b []byte) error {
 }
 
 func (w *LognitorWriter) sendGRPC(b []byte) error {
+	if time.Now().UnixMilli()%5 == 0 {
+		return errors.New("test err")
+	}
+
 	log := new(logger.Log)
 
 	if err := json.Unmarshal(b, log); err != nil {

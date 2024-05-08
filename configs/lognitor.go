@@ -8,27 +8,25 @@ import (
 
 type (
 	Lognitor struct {
-		Http  Http
-		Grpc  Grpc
-		Retry Retry
+		Http  http
+		Grpc  grpc
+		Retry retry
 		token string
 	}
 
-	Grpc struct {
+	grpc struct {
 		url     *url.URL
 		timeout time.Duration
 		enabled bool
 	}
 
-	Http struct {
+	http struct {
 		url     *url.URL
 		timeout time.Duration
 	}
 
-	Retry struct {
-		noCount bool
-		count   int
-		delay   time.Duration
+	retry struct {
+		delay time.Duration
 	}
 )
 
@@ -45,17 +43,16 @@ func NewLognitor(grpcHost, httpHost, token string) (*Lognitor, error) {
 	}
 
 	return &Lognitor{
-		Http: Http{
+		Http: http{
 			url:     u,
 			timeout: time.Second * 3,
 		},
-		Grpc: Grpc{
+		Grpc: grpc{
 			url:     grpcUrl,
 			timeout: time.Second * 3,
 		},
-		Retry: Retry{
-			count: 2,
-			delay: time.Second * 5,
+		Retry: retry{
+			delay: time.Second * 2,
 		},
 		token: token,
 	}, nil
@@ -75,21 +72,6 @@ func (l *Lognitor) SetHttpTimeout(timeout time.Duration) {
 // SetGrpcTimeout sets timeout for the gRPC requests
 func (l *Lognitor) SetGrpcTimeout(timeout time.Duration) {
 	l.Grpc.timeout = timeout
-}
-
-// EnableNoCount set flag for retry while error will be nil
-func (l *Lognitor) EnableNoCount() {
-	l.Retry.noCount = true
-}
-
-// SetRetryCount sets count of retries for each failed log
-func (l *Lognitor) SetRetryCount(count int) {
-	l.Retry.count = count
-}
-
-// SetRetryDelay sets delay between retries
-func (l *Lognitor) SetRetryDelay(delay time.Duration) {
-	l.Retry.delay = delay
 }
 
 // HttpHost returns the host of the lognitor
@@ -120,16 +102,6 @@ func (l *Lognitor) GrpcHost() string {
 // GrpcTimeout returns the grpc requests timeout
 func (l *Lognitor) GrpcTimeout() time.Duration {
 	return l.Grpc.timeout
-}
-
-// NoCount returns value of flag that mean retry while error will be nil
-func (l *Lognitor) NoCount() bool {
-	return l.Retry.noCount
-}
-
-// RetryCount returns retry count for each failed log
-func (l *Lognitor) RetryCount() int {
-	return l.Retry.count
 }
 
 // RetryDelay returns delay between retries
