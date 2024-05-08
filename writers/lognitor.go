@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/lognitor/entrypoint/pkg/transport/grpc/entrypoint"
 	"github.com/lognitor/go-logger/logger"
@@ -221,10 +220,6 @@ func (w *LognitorWriter) sendHTTP(b []byte) error {
 }
 
 func (w *LognitorWriter) sendGRPC(b []byte) error {
-	if time.Now().UnixMilli()%5 == 0 {
-		return errors.New("test err")
-	}
-
 	log := new(logger.Log)
 
 	if err := json.Unmarshal(b, log); err != nil {
