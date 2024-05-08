@@ -6,14 +6,29 @@ import (
 	"time"
 )
 
-type Lognitor struct {
-	httpHost    *url.URL
-	httpTimeout time.Duration
-	grpcHost    *url.URL
-	grpcTimeout time.Duration
-	token       string
-	grpc        bool
-}
+type (
+	Lognitor struct {
+		Http  http
+		Grpc  grpc
+		Retry retry
+		token string
+	}
+
+	grpc struct {
+		url     *url.URL
+		timeout time.Duration
+		enabled bool
+	}
+
+	http struct {
+		url     *url.URL
+		timeout time.Duration
+	}
+
+	retry struct {
+		delay time.Duration
+	}
+)
 
 // NewLognitor creates a new Lognitor config
 func NewLognitor(grpcHost, httpHost, token string) (*Lognitor, error) {
@@ -28,39 +43,45 @@ func NewLognitor(grpcHost, httpHost, token string) (*Lognitor, error) {
 	}
 
 	return &Lognitor{
-		httpHost:    u,
-		httpTimeout: time.Second * 3,
-		token:       token,
-		grpcHost:    grpcUrl,
-		grpcTimeout: time.Second * 3,
-		grpc:        false,
+		Http: http{
+			url:     u,
+			timeout: time.Second * 3,
+		},
+		Grpc: grpc{
+			url:     grpcUrl,
+			timeout: time.Second * 3,
+		},
+		Retry: retry{
+			delay: time.Second * 2,
+		},
+		token: token,
 	}, nil
 }
 
 // EnableGrpc enables grpc for the lognitor
 // Attention if you enable grpc, need recreate the lognitor writer
 func (l *Lognitor) EnableGrpc() {
-	l.grpc = true
+	l.Grpc.enabled = true
 }
 
 // SetHttpTimeout sets timeout for the HTTP requests
 func (l *Lognitor) SetHttpTimeout(timeout time.Duration) {
-	l.httpTimeout = timeout
+	l.Http.timeout = timeout
 }
 
 // SetGrpcTimeout sets timeout for the gRPC requests
 func (l *Lognitor) SetGrpcTimeout(timeout time.Duration) {
-	l.grpcTimeout = timeout
+	l.Grpc.timeout = timeout
 }
 
 // HttpHost returns the host of the lognitor
 func (l *Lognitor) HttpHost() string {
-	return l.httpHost.String()
+	return l.Http.url.String()
 }
 
 // HttpTimeout returns the http requests timeout
 func (l *Lognitor) HttpTimeout() time.Duration {
-	return l.httpTimeout
+	return l.Http.timeout
 }
 
 // Token returns the token of the lognitor
@@ -70,15 +91,20 @@ func (l *Lognitor) Token() string {
 
 // IsGrpc returns if the lognitor is using grpc
 func (l *Lognitor) IsGrpc() bool {
-	return l.grpc
+	return l.Grpc.enabled
 }
 
 // GrpcHost returns the grpc host of the lognitor
 func (l *Lognitor) GrpcHost() string {
-	return l.grpcHost.String()
+	return l.Grpc.url.String()
 }
 
 // GrpcTimeout returns the grpc requests timeout
 func (l *Lognitor) GrpcTimeout() time.Duration {
-	return l.grpcTimeout
+	return l.Grpc.timeout
+}
+
+// RetryDelay returns delay between retries
+func (l *Lognitor) RetryDelay() time.Duration {
+	return l.Retry.delay
 }
