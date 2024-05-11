@@ -14,7 +14,6 @@ import (
 	"time"
 )
 
-// LognitorWriter is a writer that sends logs to lognitor
 type (
 	// EntrypointClient interface of Lognitor gRPC api client
 	EntrypointClient interface {

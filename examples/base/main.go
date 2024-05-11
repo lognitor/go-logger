@@ -50,7 +50,7 @@ func main() {
 
 func test(l *logger.Logger) {
 	for i := 0; i < 3; i++ {
-		f, err := os.Open("cmd/examples/base/1.txt")
+		f, err := os.Open("examples/base/1.txt")
 		if err != nil {
 			log.Fatalf("failed to open file: %s", err)
 		}
