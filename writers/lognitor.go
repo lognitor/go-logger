@@ -82,6 +82,13 @@ func NewLognitorWriter(ctx context.Context, config ConfigLognitorInterface) (*Lo
 		if err := w.initGRPC(ctx, config.GrpcHost(), config.GrpcTimeout()); err != nil {
 			return nil, err
 		}
+	} else {
+		w.http = httpInfo{
+			host: config.HttpHost(),
+			client: &http.Client{
+				Timeout: config.HttpTimeout(),
+			},
+		}
 	}
 
 	go w.worker()
