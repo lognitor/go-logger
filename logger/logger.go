@@ -199,6 +199,11 @@ func (l *Logger) log(level Lvl, d ...any) {
 
 	if len(d) == 1 {
 		for _, v := range d {
+			if str, ok := v.(string); ok {
+				msg = []byte(str)
+				break
+			}
+
 			if msg, err = json.Marshal(v); err != nil {
 				return
 			}
