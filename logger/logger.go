@@ -59,6 +59,21 @@ func New(writer io.WriteCloser, prefix string) *Logger {
 	return l
 }
 
+func (l *Logger) Write(p []byte) (n int, err error) {
+	b, err := json.Marshal(Log{
+		Time:    time.Time{},
+		Level:   l.levels[l.level],
+		Prefix:  l.prefix,
+		Message: string(p),
+		Agent:   "lognitor/cli",
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return l.writer.Write(b)
+}
+
 func (l *Logger) Close() error {
 	return l.writer.Close()
 }
