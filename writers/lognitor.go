@@ -30,8 +30,6 @@ type (
 		cancel context.CancelCauseFunc
 		// wait group for added logs
 		wg sync.WaitGroup
-		// in is input from the logger
-		in chan []byte
 		// token is the user token
 		token string
 		// retry contains chan for receive errors
@@ -43,11 +41,8 @@ type (
 	}
 
 	retry struct {
-		ctx    context.Context
-		cancel context.CancelCauseFunc
-		wg     sync.WaitGroup
-		in     chan []byte
-		delay  time.Duration
+		tries int
+		delay time.Duration
 	}
 
 	httpInfo struct {
@@ -67,16 +62,14 @@ type (
 // Avoid unnecessary creation operations!
 func NewLognitorWriter(ctx context.Context, config ConfigLognitorInterface) (*LognitorWriter, error) {
 	w := &LognitorWriter{
-		in:    make(chan []byte, 1000),
 		token: config.Token(),
 		retry: retry{
-			in:    make(chan []byte, 100),
+			tries: 3,
 			delay: config.RetryDelay(),
 		},
 	}
 
 	w.ctx, w.cancel = context.WithCancelCause(context.Background())
-	w.retry.ctx, w.retry.cancel = context.WithCancelCause(context.Background())
 
 	if config.IsGrpc() {
 		if err := w.initGRPC(ctx, config.GrpcHost(), config.GrpcTimeout()); err != nil {
@@ -90,9 +83,6 @@ func NewLognitorWriter(ctx context.Context, config ConfigLognitorInterface) (*Lo
 			},
 		}
 	}
-
-	go w.worker()
-	go w.retryWorker()
 
 	return w, nil
 }
@@ -124,7 +114,13 @@ func (w *LognitorWriter) Write(p []byte) (n int, err error) {
 	}
 
 	w.wg.Add(1)
-	go w.writeToChannel(p)
+	go func() {
+		defer w.wg.Done()
+
+		if sendErr := w.sendRequest(p); sendErr != nil {
+			w.sendWithRetry(p)
+		}
+	}()
 
 	return len(p), nil
 }
@@ -136,17 +132,10 @@ func (w *LognitorWriter) Close() error {
 	if err := context.Cause(w.ctx); err != nil {
 		return err
 	}
+	w.cancel(ErrWriterIsClosed)
 
-	w.wg.Wait()
-	w.retry.wg.Wait()
-	//close channel for incoming logs
-	close(w.in)
 	//wait until remaining logs will be done
-	<-w.ctx.Done()
-	//close retry channel
-	close(w.retry.in)
-	//wait until retries done
-	<-w.retry.ctx.Done()
+	w.wg.Wait()
 
 	if w.grpc.conn != nil {
 		if err := w.grpc.conn.Close(); err != nil {
@@ -155,38 +144,6 @@ func (w *LognitorWriter) Close() error {
 	}
 
 	return nil
-}
-
-func (w *LognitorWriter) writeToChannel(b []byte) {
-	defer w.wg.Done()
-
-	w.in <- b
-}
-
-func (w *LognitorWriter) writeToRetry(b []byte) {
-	defer w.wg.Done()
-
-	w.retry.in <- b
-}
-
-func (w *LognitorWriter) worker() {
-	for r := range w.in {
-		if err := w.sendRequest(r); err != nil {
-			w.wg.Add(1)
-			go w.writeToRetry(r)
-		}
-	}
-
-	w.cancel(ErrWriterIsClosed)
-}
-
-func (w *LognitorWriter) retryWorker() {
-	for r := range w.retry.in {
-		w.retry.wg.Add(1)
-		go w.sendWithRetry(r)
-	}
-
-	w.retry.cancel(ErrRetryWorkerIsClosed)
 }
 
 func (w *LognitorWriter) sendRequest(b []byte) error {
@@ -198,10 +155,8 @@ func (w *LognitorWriter) sendRequest(b []byte) error {
 }
 
 func (w *LognitorWriter) sendWithRetry(b []byte) {
-	defer w.retry.wg.Done()
-
 	if err := w.sendRequest(b); err != nil {
-		for err != nil {
+		for i := 0; i < w.retry.tries && err != nil; i++ {
 			if err = w.sendRequest(b); err != nil {
 				<-time.After(w.retry.delay)
 			}
